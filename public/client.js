@@ -1,12 +1,30 @@
 var socket = io();
 
-var form = document.getElementById("form")
-var input = document.getElementById("input")
+var counter = document.getElementById("counter")
+var incrementButton = document.getElementById("increment")
+counter.innerHTML = "0"
 
-form.addEventListener('submit', function(e) {
-    e.preventDefault()
-    if (input.value) {
-        socket.emit("chat message", input.value)
-        input.value = ""
-    }
+incrementButton.addEventListener('click', function(e) {
+    console.log("button clicked")
+    socket.emit("increment")
 })
+
+socket.on("connect", () => {
+    console.log(`client learned its own id: ${socket.id}`)
+});
+
+socket.on("set-value", function(val) {
+    console.log("set value inside client")
+    counter.innerHTML = val + ""
+})
+
+
+
+/*
+socket.on("chat message", function(msg) {
+    var item = document.createElement("li");
+    item.textContent = msg;
+    messages.appendChild(item);
+    window.scrollTo(0, document.body.scrollHeight);
+})
+*/
