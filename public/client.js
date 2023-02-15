@@ -2,11 +2,25 @@ var socket = io();
 
 var counter = document.getElementById("counter")
 var incrementButton = document.getElementById("increment")
-counter.innerHTML = "0"
+
+var permission = false
+document.getElementById("permission").innerHTML = "NO permission"
 
 incrementButton.addEventListener('click', function(e) {
     console.log("button clicked")
-    socket.emit("increment")
+    if (permission) {
+        socket.emit("increment")
+    }
+})
+
+socket.on("set-permission", () => {
+    permission = true
+    document.getElementById("permission").innerHTML = "permission"
+})
+
+socket.on("remove-permission", () => {
+    permission = false
+    document.getElementById("permission").innerHTML = "NO permission"
 })
 
 socket.on("connect", () => {
