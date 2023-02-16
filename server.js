@@ -13,15 +13,26 @@ let counterValue = 0
 app.use(express.static("public"))
 
 let clientSockets = []
-let permissionId;
+let activeSocket = null
 
 function forgetClientSocket(id) {
+    // special case: delete active socket
+    if (activeSocket.id === id && clientSockets.length > 1) {
+        changePermission()
+    } else if (activeSocket.id === id && clientSockets.length === 1) {
+        activeSocket = null
+    }
+    // filter out the socket that shall be deleted
     clientSockets = clientSockets.filter(socket => socket.id !== id)
 }
 
-function getNextSocket(id) {
-    let i = clientSockets.findIndex(socket => socket.id === id)
-    return clientSockets[i % clientSockets.length]
+function changePermission() {
+    // socket.IO DOES guarantee message ordering, so we do not need to pay attention if there is only one socket
+    io.to(activeSocket.id).emit("remove-permission")
+    // get index of active socket
+    let i = clientSockets.findIndex(socket => socket.id === activeSocket.id)
+    activeSocket = clientSockets[(i + 1) % clientSockets.length]
+    io.to(activeSocket.id).emit("set-permission")
 }
 
 io.on("connection", (socket) => {
@@ -29,17 +40,14 @@ io.on("connection", (socket) => {
     clientSockets.push(socket)
     // the first client that connects has permission to increment the button
     if (clientSockets.length === 1) {
-        permissionId = socket.id
-        io.to(permissionId).emit("set-permission")       
+        activeSocket = socket
+        io.to(activeSocket.id).emit("set-permission")       
     }
     // update client's counter upon connecting to servers
     // NOT socket.to(socket.id).emit() because this sends the message to everyone in the room EXPECT socket
     io.to(socket.id).emit("set-value", counterValue)
 
     socket.on("disconnect", () => {
-        if (permissionId === socket.id) {
-            //TODO
-        }
         forgetClientSocket(socket.id)
         console.log("user disconnected")
     })
@@ -49,10 +57,8 @@ io.on("connection", (socket) => {
         counterValue++
         io.emit("set-value", counterValue)
         //change permission
-        io.to(socket.id).emit("remove-permission")
-        permissionId = getNextSocket(socket.id).id
-        console.log(`new permission id is ${permissionId}`)
-        io.to(permissionId).emit("set-permission")
+        changePermission()
+        console.log(`new permission id is ${activeSocket.id}`)
     })
 })
 
